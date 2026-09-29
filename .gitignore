@@ -1,0 +1,31 @@
+# AgentCap state and secrets — never commit these
+.agentcap/
+*.key
+*.pub
+*.signed.json
+ledger.jsonl
+leases.json
+rate.json
+revoked.json
+damage.jsonl
+
+# Conformance and lab run artifacts
+conformance/state_*/
+labs/**/.agentcap/
+labs/**/damage.jsonl
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+dist/
+build/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+*.swp

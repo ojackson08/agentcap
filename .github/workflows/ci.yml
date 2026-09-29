@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests and conformance
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest
+
+      - name: Generate an ephemeral signing key
+        run: |
+          mkdir -p "$HOME/.agentcap"
+          echo "AGENTCAP_KEY_DIR=$HOME/.agentcap" >> "$GITHUB_ENV"
+          agentcap init --name ci-subject --principal ci@example.com --output /tmp/ci.yaml
+
+      - name: Unit tests
+        run: python -m pytest tests/ -q
+
+      - name: Conformance suite
+        run: python conformance/run_conformance.py
+
+      - name: Incident labs — mediated runs must pass
+        run: |
+          cd labs/01-pocketos-delete && python run.py --mediated
+          cd ../02-dn42-runaway      && python run.py --mediated
+          cd ../03-gitlost-exfil     && python run.py --mediated
+
+      - name: Incident labs — unmediated runs must still demonstrate damage
+        run: |
+          # If these stop reproducing the failure, the labs have lost their
+          # value as a regression suite. Assert that damage still occurs.
+          cd labs/01-pocketos-delete
+          python run.py --unmediated | grep -q "DAMAGE RECORDED: 2"
+          cd ../02-dn42-runaway
+          python run.py --unmediated | grep -q "DAMAGE RECORDED: 1"
+          cd ../03-gitlost-exfil
+          python run.py --unmediated | grep -q "LEAKED: prod-db-password"

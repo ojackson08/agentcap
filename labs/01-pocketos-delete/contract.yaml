@@ -1,0 +1,47 @@
+apiVersion: agentcap.dev/v1
+kind: CapabilityContract
+metadata:
+  name: staging-deploy-agent
+  principal: platform-team@example.com
+  # Short-lived by construction. The lab runner re-issues this window at run
+  # time so the fixture never expires; the committed values are illustrative.
+  issued: "2026-09-28T00:00:00Z"
+  expires: "2026-09-28T12:00:00Z"
+spec:
+  identity:
+    workload: spiffe://example.com/agent/staging-deploy
+    description: >
+      A coding agent doing staging work. It legitimately needs to read
+      application files and write deployment artifacts. It has no business
+      holding a database volume credential, and it has no business calling
+      volumeDelete at all.
+
+  delegation:
+    maxDepth: 0
+    nonDelegable:
+      - "*Delete*"
+
+  tools:
+    # Granted: the staging work it was actually asked to do.
+    - id: s3:GetObject
+      digest: sha256:5a7c9e1b3d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c
+    - id: s3:PutObject
+      digest: sha256:1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c
+    - id: github:list_issues
+      digest: sha256:2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d
+
+    # Granted but explicitly denied by predicate: the operation that caused
+    # the incident. The tool is listed so the denial is visible in the plan
+    # rather than being an absence nobody notices.
+    - id: volumeDelete
+      digest: sha256:3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e
+
+  arguments:
+    - tool: s3:PutObject
+      constraint: startswith(args["bucket"], "recon-artifacts-")
+    - tool: volumeDelete
+      constraint: "false"
+
+  budget:
+    usd: 5
+    toolCalls: 200

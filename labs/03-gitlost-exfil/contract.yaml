@@ -1,0 +1,60 @@
+apiVersion: agentcap.dev/v1
+kind: CapabilityContract
+metadata:
+  name: issue-triage-agent
+  principal: oss-maintainers@example.com
+  issued: "2026-09-28T00:00:00Z"
+  expires: "2026-09-28T06:00:00Z"
+spec:
+  identity:
+    workload: spiffe://example.com/agent/issue-triage
+    description: >
+      A GitHub workflow agent that triages issues. It legitimately reads issues
+      and repository files, and it legitimately posts replies. The incident came
+      from those three capabilities existing in one session with nothing
+      connecting the sensitivity of the input to the destination of the output.
+
+  delegation:
+    maxDepth: 0
+    nonDelegable:
+      - "github:create_comment"
+
+  tools:
+    # Reads are permitted. Reading untrusted content is the agent's job, and a
+    # control that forbids it is a control that forbids the product.
+    - id: github:list_issues
+      digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+    - id: github:read_file
+      digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+    # The sink. Gated, because publishing is outward-facing and irreversible
+    # in the way that matters: you cannot un-leak.
+    - id: github:create_comment
+      digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+      requireApproval: true
+
+    # Egress is granted only for the allowlisted documentation host, and the
+    # data-flow rule below still applies to it.
+    - id: http:egress
+      digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+  arguments:
+    - tool: github:read_file
+      constraint: args["path"].endswith(".md") or args["path"].endswith(".txt")
+
+  # The control that the real incident lacked. Not a classifier reading the
+  # issue text and judging it benign — a deterministic rule that says data
+  # which came from untrusted or private sources may not reach a public sink.
+  dataFlow:
+    - from: untrusted:web
+      deny:
+        - "github:create_comment"
+        - "http:egress"
+    - from: private:acme
+      deny:
+        - "github:create_comment"
+        - "http:egress"
+
+  budget:
+    usd: 2
+    toolCalls: 100

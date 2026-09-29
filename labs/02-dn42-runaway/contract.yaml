@@ -1,0 +1,39 @@
+apiVersion: agentcap.dev/v1
+kind: CapabilityContract
+metadata:
+  name: network-recon-agent
+  principal: sre-oncall@example.com
+  issued: "2026-09-28T00:00:00Z"
+  expires: "2026-09-28T06:00:00Z"
+spec:
+  identity:
+    workload: spiffe://example.com/agent/network-recon
+    awsRole: arn:aws:iam::123456789012:role/recon-agent
+    description: >
+      An agent scanning internal network ranges. It legitimately needs compute.
+      What it does not need is the ability to choose an arbitrarily expensive
+      instance class or an unbounded quantity — the two decisions that turned a
+      reasonable task into a $6,531 bill.
+
+  delegation:
+    maxDepth: 0
+
+  tools:
+    - id: ec2:RunInstances
+      digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+      maxCalls: 100
+    - id: s3:PutObject
+      digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+  arguments:
+    # The control that would have prevented the incident. Not "do not overspend"
+    # in a prompt — a deterministic ceiling on instance class and quantity.
+    - tool: ec2:RunInstances
+      constraint: args["instance_type"] in ["t3.medium", "t3.large"] and args["count"] <= 3
+    - tool: s3:PutObject
+      constraint: startswith(args["bucket"], "recon-artifacts-")
+
+  budget:
+    usd: 25
+    toolCalls: 200
+    egressGiB: 1
