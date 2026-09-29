@@ -1,5 +1,9 @@
 # AgentCap
 
+
+[![CI](https://github.com/ojackson08/agentcap/actions/workflows/ci.yml/badge.svg)](https://github.com/ojackson08/agentcap/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 **An agent should not act because it holds a credential. It should act because it holds a signed, short-lived contract that says exactly what it may do — and something must stand between the agent and the real world enforcing it.**
 
 AgentCap is that something. It is a capability-contract enforcement point for AI agent tool calls, with an evidence ledger that survives not trusting the agent or its operator.
